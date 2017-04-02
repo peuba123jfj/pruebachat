@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test</title>
+    <style type="text/css">
+        .container {
+            background-color: #0094ff;
+            border: thick solid #808080;
+            padding: 20px;
+            margin: 20px;
+            margin-bottom:20px;
+        }
+        #message{
+            margin-bottom:10px;
+        }
+        #conference-name{
+            display:none;
+        }
+        #videos-container{
+            visibility: hidden;
+            width:20px;
+            height:20px;
+        }
+        video{
+            width: 20px;
+            height:20px;
+        }
+    </style>
+
+    <script src="//cdn.webrtc-experiment.com/firebase.js"></script>
+    <script src="//cdn.webrtc-experiment.com/RTCMultiConnection.js"></script>
+</head>
+<body>
+  
+
+    <article>
+        <header style="text-align: center;"> </header>
+        <section class="experiment">
+            <section>
+                <span>
+                    Click para room privado ---->
+                    <a href="" target="_blank" title="Private Room">
+                        <code>
+                            <strong id="unique-token">#123456789</strong>
+                        </code>
+                    </a>
+                </span>
+
+                <input type="text" id="conference-name" placeholder="Nombre de Usuario">
+                <button id="setup-new-conference" class="setup">Crear room</button>
+            </section>
+
+
+            <table style="width: 100%;" id="rooms-list"></table>
+
+
+            <div id="videos-container"></div>
+        </section>
+
+        <script>
+            var connection = new RTCMultiConnection();
+            connection.session = {
+                audio: true,
+                video: true
+            };
+            connection.onstream = function (e) {
+ 
+            };
+            function rotateVideo(mediaElement) {
+                
+            }
+            connection.onstreamended = function (e) {
+                e.mediaElement.style.opacity = 0;
+                rotateVideo(e.mediaElement);
+                setTimeout(function () {
+                    if (e.mediaElement.parentNode) {
+                        e.mediaElement.parentNode.removeChild(e.mediaElement);
+                    }
+                    scaleVideos();
+                }, 1000);
+            };
+            var sessions = {};
+            connection.onNewSession = function (session) {
+                if (sessions[session.sessionid]) return;
+                sessions[session.sessionid] = session;
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td><strong>' + session.extra['session-name'] + '</strong> creo un room!</td>' +
+                    '<td><button class="join">Entrar</button></td>';
+                roomsList.insertBefore(tr, roomsList.firstChild);
+                var joinRoomButton = tr.querySelector('.join');
+                joinRoomButton.setAttribute('data-sessionid', session.sessionid);
+                joinRoomButton.onclick = function () {
+                    this.disabled = true;
+                    var sessionid = this.getAttribute('data-sessionid');
+                    session = sessions[sessionid];
+                    if (!session) throw 'No such session exists.';
+                    connection.join(session);
+                };
+            };
+            //var videosContainer = document.getElementById('videos-container') || document.body;
+            var roomsList = document.getElementById('rooms-list');
+            document.getElementById('setup-new-conference').onclick = function () {
+                this.disabled = true;
+                connection.extra = {
+                    'session-name': document.getElementById('displayname').value
+                    //document.getElementById('conference-name').value || 'Anonymous'
+                };
+                connection.open();
+            };
+
+            connection.connect();
+            (function () {
+                var uniqueToken = document.getElementById('unique-token');
+                if (uniqueToken)
+                    if (location.hash.length > 2) uniqueToken.parentNode.parentNode.parentNode.innerHTML = '<h2 style="text-align:center;"><a href="' + location.href + '" target="_blank">Compartir el id incluyendo numeral</a></h2>';
+                    else uniqueToken.innerHTML = uniqueToken.parentNode.parentNode.href = '#' + (Math.random() * new Date().getTime()).toString(36).toUpperCase().replace(/\./g, '-');
+            })();
+            function scaleVideos() {
+                
+                }
+            
+            //window.onresize = scaleVideos;
+        </script>
+
+    </article>
+
+
+    <div class="container" id="textchat">
+        <input type="text" id="message" />
+        <input type="button" id="sendmessage" value="Send" />
+        <input type="hidden" id="displayname" />
+        <ul id="discussion"></ul>
+    </div>
+    
+    
+    <script src="Scripts/jquery-1.10.2.min.js"></script>    
+    <script src="Scripts/jquery.signalR-2.1.2.min.js"></script>   
+    <script src="signalr/hubs"></script>   
+    <script type="text/javascript">
+        $(function () {            
+            var chat = $.connection.chatHub;            
+            chat.client.broadcastMessage = function (name, message) {              
+                var encodedName = $('<div />').text(name).html();
+                var encodedMsg = $('<div />').text(message).html();              
+                $('#discussion').append('<li><strong>' + encodedName
+                    + '</strong>:&nbsp;&nbsp;' + encodedMsg + '</li>');
+            };           
+            $('#displayname').val(prompt('Enter your name:', ''));           
+            $('#message').focus();            
+            $.connection.hub.start().done(function () {
+                $('#sendmessage').click(function () {                    
+                    chat.server.send($('#displayname').val(), $('#message').val());                   
+                    $('#message').val('').focus();
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>
